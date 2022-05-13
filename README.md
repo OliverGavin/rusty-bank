@@ -12,6 +12,13 @@ Run with a single argument and handle stdout: `cargo run -- transactions.csv > a
 
 Format and lint: `cargo fmt && cargo clippy`
 
+#### Logging
+Some very basic logging is configured with the WARN level by default.
+Logging levels can be set with environment variables. For example `RUST_LOG=debug`.
+
+### Documentation
+Just run `cargo doc --open`.
+
 
 -------------
 
@@ -53,7 +60,7 @@ It is probably worth logging the quiet failures due to errors on our partner's s
 
 
 ### Implementation checklist
-- [ ] Scaffolding
+- [X] Scaffolding
 - [ ] Argument parsing and validation
 - [ ] Define integ tests based on requirements
 - [ ] CSV reading and writing

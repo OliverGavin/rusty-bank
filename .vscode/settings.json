@@ -1,0 +1,8 @@
+{
+    "rust-analyzer.runnables.cargoExtraArgs": [
+        "transactions.csv"
+    ],
+    "terminal.integrated.env.linux": {
+		"RUST_LOG": "debug"
+	}
+}
