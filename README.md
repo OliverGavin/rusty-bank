@@ -61,7 +61,7 @@ It is probably worth logging the quiet failures due to errors on our partner's s
 
 ### Implementation checklist
 - [X] Scaffolding
-- [ ] Argument parsing and validation
+- [X] Argument parsing and validation
 - [ ] Define integ tests based on requirements
 - [ ] CSV reading and writing
 - [ ] Representations for client and transaction IDs
