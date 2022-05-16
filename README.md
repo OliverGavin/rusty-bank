@@ -16,6 +16,13 @@ Format and lint: `cargo fmt && cargo clippy`
 Some very basic logging is configured with the WARN level by default.
 Logging levels can be set with environment variables. For example `RUST_LOG=debug`.
 
+### Tests
+Run all unit and integration tests with `cargo test`.
+
+Run just the unit tests with `cargo test --lib`.
+
+Run just the integration tests with `cargo test --package rusty-bank --test integration_test`.
+
 ### Documentation
 Just run `cargo doc --open`.
 
@@ -62,7 +69,7 @@ It is probably worth logging the quiet failures due to errors on our partner's s
 ### Implementation checklist
 - [X] Scaffolding
 - [X] Argument parsing and validation
-- [ ] Define integ tests based on requirements
+- [X] Define integ tests based on requirements
 - [ ] CSV reading and writing
 - [ ] Representations for client and transaction IDs
 - [ ] Correct precision handling

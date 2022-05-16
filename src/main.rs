@@ -20,7 +20,7 @@ pub struct RustyBank {
 
 impl RustyBank {
     fn new(config: Config) -> Self {
-        RustyBank {config}
+        RustyBank { config }
     }
 
     fn run(&self) -> Result<()> {
