@@ -3,7 +3,7 @@ extern crate rusty_bank;
 use std::env;
 
 use anyhow::Result;
-use rusty_bank::config::Config;
+use rusty_bank::Config;
 
 fn main() -> Result<()> {
     env_logger::init();

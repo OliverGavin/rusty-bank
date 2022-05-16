@@ -71,9 +71,9 @@ It is probably worth logging the quiet failures due to errors on our partner's s
 - [X] Argument parsing and validation
 - [X] Define integ tests based on requirements
 - [ ] CSV reading and writing
-- [ ] Representations for client and transaction IDs
-- [ ] Correct precision handling
-- [ ] Representation for each transaction type along with serdes
+- [X] Representations for client and transaction IDs
+- [X] Correct precision handling
+- [X] Representation for each transaction type along with serdes
 - [ ] Support transaction type: deposit
 - [ ] Support transaction type: withdrawal
 - [ ] Support transaction type: dispute
