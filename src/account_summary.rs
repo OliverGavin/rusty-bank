@@ -77,7 +77,8 @@ mod tests {
         let mut wtr = csv::Writer::from_writer(vec![]);
 
         // Serialize the account
-        let account: AccountSummary = AccountSummary::new(ClientId(1), dec!(1.0), dec!(2.9999), false);
+        let account: AccountSummary =
+            AccountSummary::new(ClientId(1), dec!(1.0), dec!(2.9999), false);
         wtr.serialize(account)?;
 
         // Compare the result against the expected output

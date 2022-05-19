@@ -66,19 +66,37 @@ Concern:
 It is probably worth logging the quiet failures due to errors on our partner's side.
 
 
+### Assumptions
+- If there is an issue deserializing a transaction, ignore it and continue processing.
+- A dispute followed by a chargeback may succeed with insufficient funds available resulting in a negative balance.
+  - Chargebacks are not within Rusty Bank's control and chargebacks must be honoured.
+
+
 ### Implementation checklist
 - [X] Scaffolding
 - [X] Argument parsing and validation
 - [X] Define integ tests based on requirements
-- [ ] CSV reading and writing
 - [X] Representations for client and transaction IDs
 - [X] Correct precision handling
 - [X] Representation for each transaction type along with serdes
+- [X] CSV reading and writing
+- [ ] Transaction processor
 - [ ] Support transaction type: deposit
 - [ ] Support transaction type: withdrawal
 - [ ] Support transaction type: dispute
 - [ ] Support transaction type: resolve
 - [ ] Support transaction type: chargeback
+
+
+### Future ideas
+- Consider benchmarking `csv-async` for larger files.
+  - `rust-csv` does not support async reads/writes.
+- Consider alternatives to `rust-csv` for parsing CSV files to serdes.
+  - `rust-csv` does not support internally-tagged enums which limits serde functionality and thus our ability to parse `Transaction` records such that they best use the type system; ideally `amount` would not be optional but rather not exist for dispute, resolve and chargeback variants.
+- Consider using `thiserror` over `anyhow` for library internals.
+  - hiding library specific errors from other components is preferred.
+  - but `anyhow::Error` requires `Send + Sync + 'static` which is a bit ugly if not required.
+- Consider if `CsvTransactionReader` and `CsvAccountWriter` are abstractions worth keeping versus directly depending on `rust-csv` throughout.
 
 
 ## Design rationale and approach

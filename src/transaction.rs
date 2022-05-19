@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::client::ClientId;
 
 /// Supported transaction types
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TransactionType {
     Deposit,
@@ -17,15 +17,15 @@ pub enum TransactionType {
 }
 
 /// Represents a transaction ID as it's own type
-#[derive(Debug, Deserialize, Serialize)]
-pub struct TransactionId(u32);
+#[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
+pub struct TransactionId(pub u32);
 
 /// Record of a transaction
 //  Ideally `Transaction` would be an enum and `TransactionType` would not need to exist
 //    and `Transaction::amount` would only exist for deposit/withdrawal variants.
 //  However, in rust-csv internally-tagged enums are not supported:
 //    https://github.com/BurntSushi/rust-csv/issues/211
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Transaction {
     #[serde(rename = "type")]
     transaction_type: TransactionType,
@@ -34,12 +34,29 @@ pub struct Transaction {
     amount: Option<Decimal>,
 }
 
+impl Transaction {
+    // Create a transaction
+    pub fn new(
+        transaction_type: TransactionType,
+        client: ClientId,
+        tx: TransactionId,
+        amount: Option<Decimal>,
+    ) -> Self {
+        Transaction {
+            transaction_type,
+            client,
+            tx,
+            amount,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     use anyhow::Result;
-    use csv::{ReaderBuilder, Trim};
+    use csv::{Reader, ReaderBuilder, Trim, Writer};
     use test_case::test_case;
 
     #[test]
@@ -56,8 +73,8 @@ mod tests {
         ";
 
         // Prepare an in-memory reader/writer
-        let mut rdr = csv::Reader::from_reader(expected.as_bytes());
-        let mut wtr = csv::Writer::from_writer(vec![]);
+        let mut rdr = Reader::from_reader(expected.as_bytes());
+        let mut wtr = Writer::from_writer(vec![]);
 
         // Deserialize and re-serialize each transaction record
         for res in rdr.deserialize() {
@@ -80,13 +97,18 @@ mod tests {
     #[test_case("deposit,  1, -1, 10"; "when negative transaction ID")]
     #[should_panic]
     fn test_serde_when_invalid_csv(expected: &str) {
-        let expected = format!("\
+        let expected = format!(
+            "\
             type,client,tx,amount\n\
             {}\n\
-        ", expected);
+        ",
+            expected
+        );
 
         // Prepare an in-memory reader
-        let mut rdr = ReaderBuilder::new().trim(Trim::All).from_reader(expected.as_bytes());
+        let mut rdr = ReaderBuilder::new()
+            .trim(Trim::All)
+            .from_reader(expected.as_bytes());
 
         // Deserialize each transaction record
         for res in rdr.deserialize() {
