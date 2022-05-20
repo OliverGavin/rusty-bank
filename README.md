@@ -80,12 +80,26 @@ It is probably worth logging the quiet failures due to errors on our partner's s
 - [X] Correct precision handling
 - [X] Representation for each transaction type along with serdes
 - [X] CSV reading and writing
-- [ ] Transaction processor
+- [X] Basic transaction processor
+- [ ] Improve transaction serde for better type safety and add validation
 - [ ] Support transaction type: deposit
 - [ ] Support transaction type: withdrawal
 - [ ] Support transaction type: dispute
 - [ ] Support transaction type: resolve
 - [ ] Support transaction type: chargeback
+
+
+### Transaction processing algorithm & data structures
+Important constraint: transaction IDs are not guaranteed to be ordered, but transactions occur chronologically.
+This means we need to process the transactions sequentially.
+
+It also means that a deposit should occur before a dispute and a dispute should occur before a resolve/chargeback. A decent approach would be to process deposits and withrawals transaction by transaction but cache each deposit transaction in case a dispute should arise. Additionally, any valid dispute should also be cached and represented in one of two states; open or closed (a dispute may not be re-opened once closed).
+Deposit transactions could be stored in a map. Dispute statuses could be stored in a map or in two sets using just the transaction ID. The balance of each account must also be maintained. If we are processing transactions sequentially then each account may be accessed at random so a map would be suitable.
+
+The above is a stategy to process the transactions sequentially, storing only a minimum amount of information.
+Of course, if there were millions of transactions for millions of customers we would consider a more optimal solution. This could involve first grouping transactions by client ID into their own files and then processing each customer file sequentially - this is also a decent approach to parallelize the solution.
+
+If processing customer transactions individually is still not feasible and, for example, if there was a need to be able to dispute any previous transaction then we could explore some options that don't require all the data to be kept in memory. If there was no flexibility to add extra metadata such as transaction time, we could consider putting a limit on the number of records in each file and index them based on their minimum and maximum transaction IDs (there could be minimal overlap). With a suitable caching/paging strategy any previous deposit could be disputed without any significant memory overhead.
 
 
 ### Future ideas

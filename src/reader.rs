@@ -5,7 +5,14 @@ use csv::{ReaderBuilder, Trim};
 
 use crate::Transaction;
 
-/// Transaction reader for CSV files
+/// A trait for any transaction reader implementation.
+#[cfg_attr(test, mockall::automock)]
+pub trait TransactionReader {
+    /// Returns an iterator over [`Transaction`] records.
+    fn read<'a>(&'a mut self) -> Box<dyn Iterator<Item = Result<Transaction>> + 'a>;
+}
+
+/// Transaction reader for CSV files.
 pub struct CsvTransactionReader {
     reader: csv::Reader<File>,
 }
@@ -17,16 +24,16 @@ impl CsvTransactionReader {
         let reader = ReaderBuilder::new().trim(Trim::All).from_path(path)?;
         Ok(CsvTransactionReader { reader })
     }
+}
 
-    /// Returns a borrowed iterator over deserialized `Transaction` records.
-    ///
-    /// Each item yielded by this iterator is a `Result<Transaction>`.
-    /// Therefore, in order to access the record, callers must handle the
-    /// possibility of error.
-    pub fn read(&mut self) -> impl Iterator<Item = Result<Transaction>> + '_ {
-        self.reader
-            .deserialize()
-            .map(|result| result.map_err(Error::from))
+impl TransactionReader for CsvTransactionReader {
+    /// Returns an iterator over deserialized [`Transaction`] records.
+    fn read<'a>(&'a mut self) -> Box<dyn Iterator<Item = Result<Transaction>> + 'a> {
+        Box::new(
+            self.reader
+                .deserialize()
+                .map(|result| result.map_err(Error::from))
+        )
     }
 }
 

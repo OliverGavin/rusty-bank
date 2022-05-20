@@ -28,10 +28,10 @@ pub struct TransactionId(pub u32);
 #[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Transaction {
     #[serde(rename = "type")]
-    transaction_type: TransactionType,
-    client: ClientId,
-    tx: TransactionId,
-    amount: Option<Decimal>,
+    pub transaction_type: TransactionType,
+    pub client: ClientId,
+    pub tx: TransactionId,
+    pub amount: Option<Decimal>,
 }
 
 impl Transaction {

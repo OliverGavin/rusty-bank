@@ -3,10 +3,10 @@
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
-use crate::client::ClientId;
+use crate::{client::ClientId, Account};
 
 /// State of a client's account
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub struct AccountSummary {
     client: ClientId,
     available: Decimal,
@@ -16,7 +16,7 @@ pub struct AccountSummary {
 }
 
 impl AccountSummary {
-    // Create an account
+    /// Create an account
     pub fn new(client: ClientId, held: Decimal, total: Decimal, locked: bool) -> Self {
         AccountSummary {
             client,
@@ -29,9 +29,19 @@ impl AccountSummary {
         }
     }
 
-    // Create an empty account with a balance of zero
+    /// Create an empty account with a balance of zero
     pub fn empty(client: ClientId) -> Self {
         AccountSummary::new(client, 0.into(), 0.into(), false)
+    }
+}
+
+impl From<Account> for AccountSummary {
+    /// Converts the internal [`Account`] representation into a serializable [`AccountSummary`].
+    //
+    //  serde does not support derivable fields so in order to write `available` another
+    //  serialization friendly type is required.
+    fn from(account: Account) -> Self {
+        AccountSummary::new(account.client, account.held, account.total, account.locked)
     }
 }
 
@@ -106,5 +116,25 @@ mod tests {
         assert_eq!(dec!(0), account.held);
         assert_eq!(dec!(0), account.total);
         assert_eq!(false, account.locked);
+    }
+
+    #[test]
+    fn test_from() {
+        let account = Account{
+            client: ClientId(5),
+            held: 5.into(),
+            total: 20.into(),
+            locked: false
+        };
+        assert_eq!(
+            AccountSummary {
+                client: ClientId(5),
+                available: 15.into(),
+                held: 5.into(),
+                total: 20.into(),
+                locked: false
+            },
+            account.into()
+        )
     }
 }

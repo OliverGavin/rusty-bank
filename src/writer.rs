@@ -1,17 +1,26 @@
-use std::io;
-
 use anyhow::{Error, Result};
 use csv::{Writer, WriterBuilder};
 
 use crate::AccountSummary;
 
+/// A trait for any account writer implementation.
+#[cfg_attr(test, mockall::automock)]
+pub trait AccountWriter {
+    // Writes an account
+    fn write(&mut self, account: &AccountSummary) -> Result<()>;
+}
+
 /// Account writer for CSV files
 //  anyhow::Error requires Send + Sync + 'static
-pub struct CsvAccountWriter<W: io::Write + Send + Sync + 'static> {
+pub struct CsvAccountWriter<W>
+    where W: std::io::Write + Send + Sync + 'static
+{
     writer: Option<Writer<W>>,
 }
 
-impl<W: std::io::Write + Send + Sync + 'static> CsvAccountWriter<W> {
+impl<W> CsvAccountWriter<W>
+    where W: std::io::Write + Send + Sync + 'static
+{
     /// Returns an account CSV writer that writes data to wtr.
     pub fn from_writer(wtr: W) -> Self {
         let writer = WriterBuilder::new().has_headers(true).from_writer(wtr);
@@ -20,21 +29,25 @@ impl<W: std::io::Write + Send + Sync + 'static> CsvAccountWriter<W> {
         }
     }
 
-    // Serialize and writes an account
-    pub fn write(&mut self, account: &AccountSummary) -> Result<()> {
-        match self.writer.as_mut() {
-            Some(wtr) => wtr.serialize(account).map_err(Error::from),
-            None => unreachable!(),
-        }
-    }
-
-    // Flush the contents of the internal buffer and return the underlying writer.
+    /// Flush the contents of the internal buffer and return the underlying writer.
     pub fn into_inner(mut self) -> Result<W> {
         self.writer
             .take()
             .unwrap()
             .into_inner()
             .map_err(Error::from)
+    }
+}
+
+impl<W> AccountWriter for CsvAccountWriter<W>
+    where W: std::io::Write + Send + Sync + 'static
+{
+    /// Serializes and writes an account
+    fn write(&mut self, account: &AccountSummary) -> Result<()> {
+        match self.writer.as_mut() {
+            Some(wtr) => wtr.serialize(account).map_err(Error::from),
+            None => unreachable!(),
+        }
     }
 }
 
