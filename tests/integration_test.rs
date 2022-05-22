@@ -87,6 +87,31 @@ fn test_deposit_and_withdrawal_does_change_available_and_total() {
 }
 
 #[test]
+fn test_deposit_and_withdrawal_precision() {
+    let input = "\
+        type,      client, tx, amount\n\
+        deposit,        1,  1,     10.9999\n\
+        withdrawal,     1,  2,      5.9999\n\
+        deposit,        2,  3,     20.0000\n\
+        deposit,        3,  4,     10.999999\n\
+        withdrawal,     3,  5,      5.999999\n\
+        deposit,        4,  6,     20.000011\n\
+        deposit,        5,  7,     50.99\n\
+        deposit,        6,  8,     50.9999\n\
+    ";
+    let expected = "\
+        client, available, held,   total, locked\n\
+             1,         5,    0,       5,  false\n\
+             2,        20,    0,      20,  false\n\
+             3,         5,    0,       5,  false\n\
+             4,        20,    0,      20,  false\n\
+             5,     50.99,    0,   50.99,  false\n\
+             6,   50.9999,    0, 50.9999,  false\n\
+    ";
+    assert_stdout_eq(input, expected);
+}
+
+#[test]
 fn test_withdrawal_when_insufficient_funds_does_not_change_available_and_total() {
     let input = "\
         type,      client, tx, amount\n\

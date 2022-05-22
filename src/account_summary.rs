@@ -41,7 +41,12 @@ impl From<Account> for AccountSummary {
     //  serde does not support derivable fields so in order to write `available` another
     //  serialization friendly type is required.
     fn from(account: Account) -> Self {
-        AccountSummary::new(account.client, account.held, account.total, account.locked)
+        AccountSummary::new(
+            account.client,
+            account.held.normalize(),
+            account.total.normalize(),
+            account.locked,
+        )
     }
 }
 

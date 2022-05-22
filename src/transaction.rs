@@ -91,14 +91,16 @@ impl From<TransactionRecord> for Result<Transaction> {
                 tx: record.tx,
                 amount: record
                     .amount
-                    .with_context(|| format!("Expected amount for {:?}", &record))?,
+                    .with_context(|| format!("Expected amount for {:?}", &record))?
+                    .round_dp(4),
             })),
             TransactionType::Withdrawal => Ok(Transaction::Withdrawal(Withdrawal {
                 client: record.client,
                 tx: record.tx,
                 amount: record
                     .amount
-                    .with_context(|| format!("Expected amount for {:?}", &record))?,
+                    .with_context(|| format!("Expected amount for {:?}", &record))?
+                    .round_dp(4),
             })),
             TransactionType::Dispute => Ok(Transaction::Dispute(Dispute {
                 client: record.client,
