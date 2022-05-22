@@ -67,9 +67,9 @@ impl InMemoryAccountStore {
 }
 
 impl AccountStore for InMemoryAccountStore {
-    fn add_funds(&mut self, client: ClientId, _amount: Decimal) -> Result<()> {
-        let _account = self.get_account(client)?;
-        // TODO
+    fn add_funds(&mut self, client: ClientId, amount: Decimal) -> Result<()> {
+        let account = self.get_account(client)?;
+        account.total += amount;
         Ok(())
     }
 
@@ -92,6 +92,8 @@ impl AccountStore for InMemoryAccountStore {
 
 #[cfg(test)]
 mod test {
+    use rust_decimal_macros::dec;
+
     use super::*;
 
     #[test]
@@ -103,5 +105,18 @@ mod test {
         result.unwrap().locked = true;
         let result = store.get_account(ClientId(1));
         assert_eq!(true, result.is_err());
+    }
+
+    #[test]
+    fn test_add_funds() -> Result<()> {
+        let mut store = InMemoryAccountStore::new();
+        store.add_funds(ClientId(2), dec!(20))?;
+        store.add_funds(ClientId(2), dec!(5))?;
+
+        let account = store.get_account(ClientId(2))?;
+        assert_eq!(dec!(25), account.total);
+        assert_eq!(dec!(0), account.held);
+
+        Ok(())
     }
 }

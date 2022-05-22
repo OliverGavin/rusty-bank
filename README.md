@@ -83,7 +83,7 @@ It is probably worth logging the quiet failures due to errors on our partner's s
 - [X] Basic transaction processor
 - [X] Improve transaction serde for better type safety and add validation
 - [X] Block actions on locked accounts
-- [ ] Support transaction type: deposit
+- [X] Support transaction type: deposit
 - [ ] Support transaction type: withdrawal
 - [ ] Support transaction type: dispute
 - [ ] Support transaction type: resolve

@@ -44,6 +44,21 @@ fn test_success_when_empty() {
 }
 
 #[test]
+fn test_deposit_does_change_available_and_total() {
+    let input = "\
+        type,      client, tx, amount\n\
+        deposit,        1,  1,     10\n\
+        deposit,        2,  2,     20\n\
+    ";
+    let expected = "\
+        client, available, held, total, locked\n\
+             1,        10,    0,    10,  false\n\
+             2,        20,    0,    20,  false\n\
+    ";
+    assert_stdout_eq(input, expected);
+}
+
+#[test]
 #[should_panic]
 fn test_deposit_and_withdrawal_does_change_available_and_total() {
     let input = "\
