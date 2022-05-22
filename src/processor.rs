@@ -61,12 +61,16 @@ impl<S: AccountStore> TransactionProcessor<S> {
 
     fn process_deposit(&mut self, deposit: Deposit) {
         log::debug!("Processing deposit for {:?}", deposit);
-        self.store.add_funds(deposit.client, deposit.amount);
+        if let Err(err) = self.store.add_funds(deposit.client, deposit.amount) {
+            log::info!("Cannot process deposit: {}", err)
+        };
     }
 
     fn process_withdrawal(&mut self, withdrawal: Withdrawal) {
         log::debug!("Processing withdrawal for {:?}", withdrawal);
-        self.store.remove_funds(withdrawal.client, withdrawal.amount);
+        if let Err(err) = self.store.remove_funds(withdrawal.client, withdrawal.amount) {
+            log::info!("Cannot process withdrawal: {}", err)
+        };
     }
 
     fn process_dispute(&self, dispute: Dispute) {
@@ -145,7 +149,7 @@ mod test {
         store.expect_add_funds()
              .times(1)
              .with(eq(ClientId(1)), eq(dec!(10)))
-             .return_const(());
+             .returning(|_, _| Ok(()));
 
         let mut processor = TransactionProcessor::new(store);
         processor.process(reader);
@@ -172,7 +176,7 @@ mod test {
         store.expect_remove_funds()
              .times(1)
              .with(eq(ClientId(1)), eq(dec!(5)))
-             .return_const(());
+             .returning(|_, _| Ok(()));
 
         let mut processor = TransactionProcessor::new(store);
         processor.process(reader);

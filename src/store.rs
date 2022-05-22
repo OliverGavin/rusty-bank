@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use anyhow::{Result, Error};
 use rust_decimal::Decimal;
 
 use crate::ClientId;
@@ -29,13 +30,13 @@ impl Account {
 #[cfg_attr(test, mockall::automock)]
 pub trait AccountStore {
     /// Adds funds to a client's account.
-    fn add_funds(&mut self, client: ClientId, amount: Decimal);
+    fn add_funds(&mut self, client: ClientId, amount: Decimal) -> Result<()>;
 
     /// Removes funds to a client's account.
-    fn remove_funds(&mut self, client: ClientId, amount: Decimal);
+    fn remove_funds(&mut self, client: ClientId, amount: Decimal) -> Result<()>;
 
     /// Holds funds to a client's account.
-    fn hold_funds(&mut self, client: ClientId, amount: Decimal);
+    fn hold_funds(&mut self, client: ClientId, amount: Decimal) -> Result<()>;
     
     /// Exports all accounts as an iterator, consuming the store.
     fn export(self) -> Box<dyn Iterator<Item = Account>>;
@@ -54,29 +55,53 @@ impl InMemoryAccountStore {
         }
     }
 
-    fn get_account(&mut self, client: ClientId) -> &Account {
-        self.accounts.entry(client)
-                     .or_insert_with(|| Account::empty(client))
+    fn get_account(&mut self, client: ClientId) -> Result<&mut Account> {
+        // self.accounts.mut
+        let account = self.accounts.entry(client)
+            .or_insert_with(|| Account::empty(client));
+        match account.locked {
+            true => Err(Error::msg(format!("Account is locked: {:?}", account))),
+            false => Ok(account),
+        }
     }
 }
 
 impl AccountStore for InMemoryAccountStore {
-    fn add_funds(&mut self, client: ClientId, _amount: Decimal) {
-        let _account = self.get_account(client);
+    fn add_funds(&mut self, client: ClientId, _amount: Decimal) -> Result<()> {
+        let _account = self.get_account(client)?;
         // TODO
+        Ok(())
     }
 
-    fn remove_funds(&mut self, client: ClientId, _amount: Decimal) {
-        let _account = self.get_account(client);
+    fn remove_funds(&mut self, client: ClientId, _amount: Decimal) -> Result<()> {
+        let _account = self.get_account(client)?;
         // TODO
+        Ok(())
     }
 
-    fn hold_funds(&mut self, client: ClientId, _amount: Decimal) {
-        let _account = self.get_account(client);
+    fn hold_funds(&mut self, client: ClientId, _amount: Decimal) -> Result<()> {
+        let _account = self.get_account(client)?;
         // TODO
+        Ok(())
     }
 
     fn export(self) -> Box<dyn Iterator<Item = Account>> {
         Box::new(self.accounts.into_iter().map(|(_, account)| account))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_get_account() {
+        let mut store = InMemoryAccountStore::new();
+        let result = store.get_account(ClientId(1));
+        assert_eq!(true, result.is_ok());
+
+        result.unwrap().locked = true;
+        let result = store.get_account(ClientId(1));
+        assert_eq!(true, result.is_err());
     }
 }
