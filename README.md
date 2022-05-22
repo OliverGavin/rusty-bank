@@ -85,7 +85,7 @@ It is probably worth logging the quiet failures due to errors on our partner's s
 - [X] Block actions on locked accounts
 - [X] Support transaction type: deposit
 - [X] Support transaction type: withdrawal
-- [ ] Support transaction type: dispute
+- [X] Support transaction type: dispute
 - [ ] Support transaction type: resolve
 - [ ] Support transaction type: chargeback
 

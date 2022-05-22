@@ -91,9 +91,9 @@ impl AccountStore for InMemoryAccountStore {
         Ok(())
     }
 
-    fn hold_funds(&mut self, client: ClientId, _amount: Decimal) -> Result<()> {
-        let _account = self.get_account(client)?;
-        // TODO
+    fn hold_funds(&mut self, client: ClientId, amount: Decimal) -> Result<()> {
+        let account = self.get_account(client)?;
+        account.held += amount;
         Ok(())
     }
 
@@ -154,6 +154,20 @@ mod test {
         let account = store.get_account(ClientId(2))?;
         assert_eq!(dec!(20), account.total);
         assert_eq!(dec!(0), account.held);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_hold_funds() -> Result<()> {
+        let mut store = InMemoryAccountStore::new();
+        store.add_funds(ClientId(2), dec!(20))?;
+        store.hold_funds(ClientId(2), dec!(25))?;
+
+        let account = store.get_account(ClientId(2))?;
+        assert_eq!(dec!(20), account.total);
+        assert_eq!(dec!(25), account.held);
+        assert_eq!(dec!(-5), account.get_available());
 
         Ok(())
     }

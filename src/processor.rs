@@ -1,9 +1,38 @@
+use std::collections::HashMap;
+
 use anyhow::Result;
 
 use crate::{
-    AccountStore, AccountWriter, Chargeback, Deposit, Dispute, Resolve, Transaction,
+    AccountStore, AccountWriter, Chargeback, Deposit, Dispute, Resolve, Transaction, TransactionId,
     TransactionReader, Withdrawal,
 };
+
+/// Indicates if a dispute is open or closed.
+#[derive(Debug)]
+enum DisputeStatus {
+    Open,
+    Closed,
+}
+
+/// Represents a dispute case
+#[derive(Debug)]
+struct DisputeCase {
+    detail: Dispute,
+    status: DisputeStatus,
+}
+
+impl DisputeCase {
+    fn new(detail: Dispute) -> Self {
+        DisputeCase {
+            detail,
+            status: DisputeStatus::Open,
+        }
+    }
+
+    fn close(&mut self) {
+        self.status = DisputeStatus::Closed;
+    }
+}
 
 /// A transaction processor which implements the key operations on client accounts.
 ///
@@ -16,6 +45,8 @@ use crate::{
 ///
 pub struct TransactionProcessor<S: AccountStore> {
     store: S,
+    deposits: HashMap<TransactionId, Deposit>,
+    disputes: HashMap<TransactionId, DisputeCase>,
 }
 
 impl<S: AccountStore> TransactionProcessor<S> {
@@ -25,7 +56,11 @@ impl<S: AccountStore> TransactionProcessor<S> {
     /// - store: The data store implementation.
     ///
     pub fn new(store: S) -> Self {
-        TransactionProcessor { store }
+        TransactionProcessor {
+            store,
+            deposits: HashMap::new(),
+            disputes: HashMap::new(),
+        }
     }
 
     /// Process transactions.
@@ -59,8 +94,11 @@ impl<S: AccountStore> TransactionProcessor<S> {
     fn process_deposit(&mut self, deposit: Deposit) {
         log::debug!("Processing deposit for {:?}", deposit);
         if let Err(err) = self.store.add_funds(deposit.client, deposit.amount) {
-            log::info!("Cannot process deposit: {}", err)
+            log::info!("Cannot process {:?}: {}", deposit, err);
+            return;
         };
+
+        self.deposits.insert(deposit.tx, deposit);
     }
 
     fn process_withdrawal(&mut self, withdrawal: Withdrawal) {
@@ -69,13 +107,44 @@ impl<S: AccountStore> TransactionProcessor<S> {
             .store
             .remove_funds(withdrawal.client, withdrawal.amount)
         {
-            log::info!("Cannot process withdrawal: {}", err)
+            log::info!("Cannot process {:?}: {}", withdrawal, err)
         };
     }
 
-    fn process_dispute(&self, dispute: Dispute) {
+    fn process_dispute(&mut self, dispute: Dispute) {
         log::debug!("Processing dispute for {:?}", dispute);
-        todo!()
+
+        let deposit = match self.deposits.get(&dispute.tx) {
+            Some(deposit) => deposit,
+            None => {
+                log::info!(
+                    "Cannot process dispute. No such transaction found for {:?}",
+                    dispute
+                );
+                return;
+            }
+        };
+
+        if deposit.client != dispute.client {
+            log::info!(
+                "Cannot process dispute. Client ID does not match for {:?} and {:?}",
+                dispute,
+                deposit
+            );
+            return;
+        }
+
+        if let Some(case) = self.disputes.get(&dispute.tx) {
+            log::info!("Cannot process dispute. A case already exists {:?}", case);
+            return;
+        }
+
+        if let Err(err) = self.store.hold_funds(dispute.client, deposit.amount) {
+            log::info!("Cannot process {:?}: {}", dispute, err);
+            return;
+        };
+
+        self.disputes.insert(dispute.tx, DisputeCase::new(dispute));
     }
 
     fn process_resolve(&self, resolve: Resolve) {
@@ -111,6 +180,11 @@ impl<S: AccountStore> TransactionProcessor<S> {
 mod test {
     use super::*;
 
+    use hamcrest2::assert_that;
+    use hamcrest2::matches_regex;
+    use hamcrest2::HamcrestMatcher;
+    use itertools::Itertools;
+    use log::Level;
     use mockall::predicate::eq;
     use mockall_double::double;
     use rust_decimal_macros::dec;
@@ -132,20 +206,21 @@ mod test {
     fn test_process_deposit_updates_store() {
         let mut reader = MockTransactionReader::new();
         reader.expect_read().returning(|| {
-            let transactions = vec![Ok(TransactionRecord::new(
+            let transactions = vec![TransactionRecord::new(
                 TransactionType::Deposit,
                 ClientId(1),
                 TransactionId(1),
                 Some(10.into()),
-            ))]
-            .into_iter();
+            )]
+            .into_iter()
+            .map(Ok);
             Box::new(transactions)
         });
 
         let mut store = MockAccountStore::new();
         store
             .expect_add_funds()
-            .times(1)
+            .once()
             .with(eq(ClientId(1)), eq(dec!(10)))
             .returning(|_, _| Ok(()));
 
@@ -157,25 +232,149 @@ mod test {
     fn test_process_withdrawal_updates_store() {
         let mut reader = MockTransactionReader::new();
         reader.expect_read().returning(|| {
-            let transactions = vec![Ok(TransactionRecord::new(
+            let transactions = vec![TransactionRecord::new(
                 TransactionType::Withdrawal,
                 ClientId(1),
                 TransactionId(2),
                 Some(5.into()),
-            ))]
-            .into_iter();
+            )]
+            .into_iter()
+            .map(Ok);
             Box::new(transactions)
         });
 
         let mut store = MockAccountStore::new();
         store
             .expect_remove_funds()
-            .times(1)
+            .once()
             .with(eq(ClientId(1)), eq(dec!(5)))
             .returning(|_, _| Ok(()));
 
         let mut processor = TransactionProcessor::new(store);
         processor.process(reader);
+    }
+
+    #[test]
+    fn test_process_dispute_updates_store() {
+        let mut reader = MockTransactionReader::new();
+        reader.expect_read().returning(|| {
+            let transactions = vec![
+                TransactionRecord::new(
+                    TransactionType::Deposit,
+                    ClientId(1),
+                    TransactionId(1),
+                    Some(10.into()),
+                ),
+                TransactionRecord::new(
+                    TransactionType::Dispute,
+                    ClientId(1),
+                    TransactionId(1),
+                    None,
+                ),
+            ]
+            .into_iter()
+            .map(Ok);
+            Box::new(transactions)
+        });
+
+        let mut store = MockAccountStore::new();
+        store
+            .expect_add_funds()
+            .once()
+            .with(eq(ClientId(1)), eq(dec!(10)))
+            .returning(|_, _| Ok(()));
+        store
+            .expect_hold_funds()
+            .once()
+            .with(eq(ClientId(1)), eq(dec!(10)))
+            .returning(|_, _| Ok(()));
+
+        let mut processor = TransactionProcessor::new(store);
+        processor.process(reader);
+    }
+
+    #[test]
+    fn test_process_dispute_when_invalid_transaction_does_not_update_store() {
+        testing_logger::setup();
+
+        let mut reader = MockTransactionReader::new();
+        reader.expect_read().returning(|| {
+            let transactions = vec![
+                // Err: No such transaction found
+                TransactionRecord::new(
+                    TransactionType::Dispute,
+                    ClientId(1),
+                    TransactionId(1),
+                    None,
+                ),
+                // Ok
+                TransactionRecord::new(
+                    TransactionType::Deposit,
+                    ClientId(1),
+                    TransactionId(1),
+                    Some(dec!(50)),
+                ),
+                // Err: Client ID does not match
+                TransactionRecord::new(
+                    TransactionType::Dispute,
+                    ClientId(5),
+                    TransactionId(1),
+                    None,
+                ),
+                // Ok
+                TransactionRecord::new(
+                    TransactionType::Dispute,
+                    ClientId(1),
+                    TransactionId(1),
+                    None,
+                ),
+                // Err: A case already exists
+                TransactionRecord::new(
+                    TransactionType::Dispute,
+                    ClientId(1),
+                    TransactionId(1),
+                    None,
+                ),
+            ]
+            .into_iter()
+            .map(Ok);
+            Box::new(transactions)
+        });
+
+        let mut store = MockAccountStore::new();
+        store
+            .expect_add_funds()
+            .once()
+            .with(eq(ClientId(1)), eq(dec!(50)))
+            .returning(|_, _| Ok(()));
+        store
+            .expect_hold_funds()
+            .once()
+            .with(eq(ClientId(1)), eq(dec!(50)))
+            .returning(|_, _| Ok(()));
+
+        let mut processor = TransactionProcessor::new(store);
+        processor.process(reader);
+
+        testing_logger::validate(|captured_logs| {
+            let captured_logs = captured_logs
+                .iter()
+                .filter(|log| log.level <= Level::Info)
+                .collect_vec();
+            assert_eq!(captured_logs.len(), 3);
+            assert_that!(
+                captured_logs[0].body.to_owned(),
+                matches_regex("No such transaction found")
+            );
+            assert_that!(
+                captured_logs[1].body.to_owned(),
+                matches_regex("Client ID does not match")
+            );
+            assert_that!(
+                captured_logs[2].body.to_owned(),
+                matches_regex("A case already exists")
+            );
+        });
     }
 
     #[test]

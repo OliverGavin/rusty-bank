@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use crate::{client::ClientId, TransactionRecord, TransactionType};
 
 /// Represents a transaction ID as it's own type.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct TransactionId(pub u32);
 
 /// Internal transaction representation.

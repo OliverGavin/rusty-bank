@@ -16,12 +16,11 @@ fn test_failure_when_no_args() {
 }
 
 #[test]
-#[should_panic]
 fn test_failure_when_no_file() {
     let mut cmd = Command::cargo_bin("rusty-bank").unwrap();
     cmd.arg("does_not_exist.csv")
         .assert()
-        .stderr("TBD")
+        .stderr(predicate::str::contains("Error: No such file or directory"))
         .failure();
 }
 
@@ -50,10 +49,9 @@ fn assert_stdout_eq(input: &str, expected: &'static str) {
 }
 
 #[test]
-#[should_panic]
 fn test_success_when_empty() {
     let input = "type, client, tx, amount\n";
-    let expected = "client, available, held, total, locked\n";
+    let expected = "";
     assert_stdout_eq(input, expected);
 }
 
@@ -105,7 +103,6 @@ fn test_withdrawal_when_insufficient_funds_does_not_change_available_and_total()
 }
 
 #[test]
-#[should_panic]
 fn test_dispute_when_no_resolve_or_chargeback_does_change_available_and_held_funds() {
     let input = "\
         type,      client, tx, amount\n\
@@ -126,7 +123,6 @@ fn test_dispute_when_no_resolve_or_chargeback_does_change_available_and_held_fun
 }
 
 #[test]
-#[should_panic]
 fn test_dispute_when_withdrawal_does_not_change_available_and_held_funds() {
     let input = "\
         type,      client, tx, amount\n\
@@ -142,7 +138,6 @@ fn test_dispute_when_withdrawal_does_not_change_available_and_held_funds() {
 }
 
 #[test]
-#[should_panic]
 fn test_dispute_when_insufficient_funds_does_change_funds() {
     let input = "\
         type,      client, tx, amount\n\
@@ -158,7 +153,6 @@ fn test_dispute_when_insufficient_funds_does_change_funds() {
 }
 
 #[test]
-#[should_panic]
 fn test_dispute_when_transaction_does_not_exist_does_not_change_available_and_held_funds() {
     let input = "\
         type,      client, tx, amount\n\
@@ -174,7 +168,6 @@ fn test_dispute_when_transaction_does_not_exist_does_not_change_available_and_he
 }
 
 #[test]
-#[should_panic]
 fn test_dispute_when_transaction_does_not_match_client_id_does_not_change_available_and_held_funds()
 {
     let input = "\
