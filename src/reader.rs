@@ -3,13 +3,13 @@ use std::{fs::File, path::Path};
 use anyhow::{Error, Result};
 use csv::{ReaderBuilder, Trim};
 
-use crate::Transaction;
+use crate::TransactionRecord;
 
 /// A trait for any transaction reader implementation.
 #[cfg_attr(test, mockall::automock)]
 pub trait TransactionReader {
     /// Returns an iterator over [`Transaction`] records.
-    fn read<'a>(&'a mut self) -> Box<dyn Iterator<Item = Result<Transaction>> + 'a>;
+    fn read<'a>(&'a mut self) -> Box<dyn Iterator<Item = Result<TransactionRecord>> + 'a>;
 }
 
 /// Transaction reader for CSV files.
@@ -28,7 +28,7 @@ impl CsvTransactionReader {
 
 impl TransactionReader for CsvTransactionReader {
     /// Returns an iterator over deserialized [`Transaction`] records.
-    fn read<'a>(&'a mut self) -> Box<dyn Iterator<Item = Result<Transaction>> + 'a> {
+    fn read<'a>(&'a mut self) -> Box<dyn Iterator<Item = Result<TransactionRecord>> + 'a> {
         Box::new(
             self.reader
                 .deserialize()
@@ -68,13 +68,13 @@ mod tests {
 
         assert_eq!(
             vec![
-                Transaction::new(
+                TransactionRecord::new(
                     TransactionType::Deposit,
                     ClientId(1),
                     TransactionId(1),
                     Some(10.into())
                 ),
-                Transaction::new(
+                TransactionRecord::new(
                     TransactionType::Withdrawal,
                     ClientId(1),
                     TransactionId(2),

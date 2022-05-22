@@ -81,7 +81,7 @@ It is probably worth logging the quiet failures due to errors on our partner's s
 - [X] Representation for each transaction type along with serdes
 - [X] CSV reading and writing
 - [X] Basic transaction processor
-- [ ] Improve transaction serde for better type safety and add validation
+- [X] Improve transaction serde for better type safety and add validation
 - [ ] Support transaction type: deposit
 - [ ] Support transaction type: withdrawal
 - [ ] Support transaction type: dispute

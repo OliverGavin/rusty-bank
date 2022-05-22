@@ -1,9 +1,7 @@
 use anyhow::Result;
-use rust_decimal::Decimal;
 
 use crate::{
-    ClientId, Transaction, TransactionReader, TransactionId,
-    TransactionType, AccountStore, AccountWriter,
+    TransactionReader, AccountStore, AccountWriter, Transaction, Deposit, Withdrawal, Dispute, Resolve, Chargeback,
 };
 
 /// A transaction processor which implements the key operations on client accounts.
@@ -40,72 +38,49 @@ impl<S: AccountStore> TransactionProcessor<S> {
     pub fn process(&mut self, mut reader: impl TransactionReader) {
         for result in reader.read() {
             match result {
-                Ok(transaction) => self.process_transaction(transaction),
-                Err(err) => log::error!("Could not read transaction: {}", err),
+                Ok(record) => {
+                    match record.into() {
+                        Ok(tx) => self.process_transaction(tx),
+                        Err(err) => log::error!("Malformed transaction: {}", err),
+                    }
+                },
+                Err(err) => log::error!("Could not read transaction record: {}", err),
             }
         }
     }
 
     fn process_transaction(&mut self, transaction: Transaction) {
-        let (transaction_type, client, tx, amount) = (
-            transaction.transaction_type,
-            transaction.client,
-            transaction.tx,
-            transaction.amount,
-        );
-        match transaction_type {
-            TransactionType::Deposit => self.process_deposit(client, tx, amount.unwrap()),
-            TransactionType::Withdrawal => self.process_withdrawal(client, tx, amount.unwrap()),
-            TransactionType::Dispute => self.process_dispute(client, tx),
-            TransactionType::Resolve => self.process_resolve(client, tx),
-            TransactionType::Chargeback => self.process_chargeback(client, tx),
+        match transaction {
+            Transaction::Deposit(tx) => self.process_deposit(tx),
+            Transaction::Withdrawal(tx) => self.process_withdrawal(tx),
+            Transaction::Dispute(tx) => self.process_dispute(tx),
+            Transaction::Resolve(tx) => self.process_resolve(tx),
+            Transaction::Chargeback(tx) => self.process_chargeback(tx),
         }
     }
 
-    fn process_deposit(&mut self, client: ClientId, tx: TransactionId, amount: Decimal) {
-        log::debug!(
-            "Processing deposit (client='{:?}', tx='{:?}', amount='{:?}')",
-            client,
-            tx,
-            amount
-        );
-        self.store.add_funds(client, amount);
+    fn process_deposit(&mut self, deposit: Deposit) {
+        log::debug!("Processing deposit for {:?}", deposit);
+        self.store.add_funds(deposit.client, deposit.amount);
     }
 
-    fn process_withdrawal(&mut self, client: ClientId, tx: TransactionId, amount: Decimal) {
-        log::debug!(
-            "Processing withdrawal (client='{:?}', tx='{:?}', amount='{:?}')",
-            client,
-            tx,
-            amount
-        );
-        self.store.remove_funds(client, amount);
+    fn process_withdrawal(&mut self, withdrawal: Withdrawal) {
+        log::debug!("Processing withdrawal for {:?}", withdrawal);
+        self.store.remove_funds(withdrawal.client, withdrawal.amount);
     }
 
-    fn process_dispute(&self, client: ClientId, tx: TransactionId) {
-        log::debug!(
-            "Processing dispute (client='{:?}', tx='{:?}')",
-            client,
-            tx
-        );
+    fn process_dispute(&self, dispute: Dispute) {
+        log::debug!("Processing dispute for {:?}", dispute);
         todo!()
     }
 
-    fn process_resolve(&self, client: ClientId, tx: TransactionId) {
-        log::debug!(
-            "Processing resolve (client='{:?}', tx='{:?}')",
-            client,
-            tx
-        );
+    fn process_resolve(&self, resolve: Resolve) {
+        log::debug!("Processing resolve for {:?}", resolve);
         todo!()
     }
 
-    fn process_chargeback(&self, client: ClientId, tx: TransactionId) {
-        log::debug!(
-            "Processing chargeback (client='{:?}', tx='{:?}')",
-            client,
-            tx
-        );
+    fn process_chargeback(&self, chargeback: Chargeback) {
+        log::debug!("Processing chargeback for {:?}", chargeback);
         todo!()
     }
 
@@ -136,7 +111,12 @@ mod test {
     use mockall_double::double;
     use rust_decimal_macros::dec;
 
+    use crate::TransactionRecord;
+    use crate::TransactionType;
     use crate::Account;
+    use crate::ClientId;
+    use crate::TransactionId;
+
     #[double]
     use crate::AccountStore as MockAccountStore;
     #[double]
@@ -150,7 +130,7 @@ mod test {
         reader.expect_read().returning(|| {
             let transactions = vec![
                 Ok(
-                    Transaction::new(
+                    TransactionRecord::new(
                         TransactionType::Deposit,
                         ClientId(1),
                         TransactionId(1),
@@ -177,7 +157,7 @@ mod test {
         reader.expect_read().returning(|| {
             let transactions = vec![
                 Ok(
-                    Transaction::new(
+                    TransactionRecord::new(
                         TransactionType::Withdrawal,
                         ClientId(1),
                         TransactionId(2),
