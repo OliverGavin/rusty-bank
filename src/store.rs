@@ -39,6 +39,9 @@ pub trait AccountStore {
     /// Removes funds from a client's account.
     fn remove_funds(&mut self, client: ClientId, amount: Decimal) -> Result<()>;
 
+    /// Removes funds from a client's account even if insufficient funds are available and freezes the account.
+    fn force_remove_funds_and_lock(&mut self, client: ClientId, amount: Decimal) -> Result<()>;
+
     /// Holds funds from a client's account.
     fn hold_funds(&mut self, client: ClientId, amount: Decimal) -> Result<()>;
 
@@ -63,7 +66,6 @@ impl InMemoryAccountStore {
     }
 
     fn get_account(&mut self, client: ClientId) -> Result<&mut Account> {
-        // self.accounts.mut
         let account = self
             .accounts
             .entry(client)
@@ -91,6 +93,14 @@ impl AccountStore for InMemoryAccountStore {
             )));
         }
         account.total -= amount;
+        Ok(())
+    }
+
+    fn force_remove_funds_and_lock(&mut self, client: ClientId, amount: Decimal) -> Result<()> {
+        let account = self.get_account(client)?;
+        account.held -= amount;
+        account.total -= amount;
+        account.locked = true;
         Ok(())
     }
 

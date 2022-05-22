@@ -87,7 +87,7 @@ It is probably worth logging the quiet failures due to errors on our partner's s
 - [X] Support transaction type: withdrawal
 - [X] Support transaction type: dispute
 - [X] Support transaction type: resolve
-- [ ] Support transaction type: chargeback
+- [X] Support transaction type: chargeback
 
 
 ### Transaction processing algorithm & data structures

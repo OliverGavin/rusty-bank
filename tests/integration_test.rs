@@ -287,7 +287,6 @@ fn test_duplicate_dispute_after_resolve_is_ignored() {
 }
 
 #[test]
-#[should_panic]
 fn test_chargeback_when_dispute_does_change_total_and_held_funds_and_freeze() {
     let input = "\
         type,      client, tx, amount\n\
@@ -304,7 +303,6 @@ fn test_chargeback_when_dispute_does_change_total_and_held_funds_and_freeze() {
 }
 
 #[test]
-#[should_panic]
 fn test_chargeback_when_transaction_does_not_exist_does_not_change_total_and_held_funds() {
     let input = "\
         type,      client, tx, amount\n\
@@ -322,7 +320,6 @@ fn test_chargeback_when_transaction_does_not_exist_does_not_change_total_and_hel
 }
 
 #[test]
-#[should_panic]
 fn test_chargeback_when_transaction_does_not_match_client_id_does_not_change_total_and_held_funds()
 {
     let input = "\
@@ -334,13 +331,11 @@ fn test_chargeback_when_transaction_does_not_match_client_id_does_not_change_tot
     let expected = "\
         client, available, held, total, locked\n\
              1,         0,    5,     5,  false\n\
-             2,         0,    0,     0,  false\n\
     ";
     assert_stdout_eq(input, expected);
 }
 
 #[test]
-#[should_panic]
 fn test_chargeback_when_dispute_does_not_exist_does_not_change_total_and_held_funds() {
     let input = "\
         type,      client, tx, amount\n\
@@ -355,7 +350,6 @@ fn test_chargeback_when_dispute_does_not_exist_does_not_change_total_and_held_fu
 }
 
 #[test]
-#[should_panic]
 fn test_chargeback_when_insufficient_funds_does_change_total_funds_to_negative_and_decrease_held_funds_and_freeze(
 ) {
     let input = "\
@@ -373,7 +367,6 @@ fn test_chargeback_when_insufficient_funds_does_change_total_funds_to_negative_a
 }
 
 #[test]
-#[should_panic]
 fn test_duplicate_dispute_before_chargeback_does_decrease_funds_and_freeze() {
     let input = "\
         type,      client, tx, amount\n\
@@ -390,7 +383,6 @@ fn test_duplicate_dispute_before_chargeback_does_decrease_funds_and_freeze() {
 }
 
 #[test]
-#[should_panic]
 fn test_any_transaction_after_chargeback_is_ignored() {
     let input = "\
         type,      client, tx, amount\n\
@@ -417,7 +409,6 @@ fn test_any_transaction_after_chargeback_is_ignored() {
 }
 
 #[test]
-#[should_panic]
 fn test_resolve_after_chargeback_is_ignored() {
     let input = "\
         type,      client, tx, amount\n\
@@ -434,7 +425,6 @@ fn test_resolve_after_chargeback_is_ignored() {
 }
 
 #[test]
-#[should_panic]
 fn test_chargeback_after_resolve_is_ignored() {
     let input = "\
         type,      client, tx, amount\n\
