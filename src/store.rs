@@ -24,6 +24,10 @@ impl Account {
             locked: false
         }
     }
+
+    pub fn get_available(&self) -> Decimal {
+        self.total - self.held
+    }
 }
 
 /// A trait for any account store implementation.
@@ -73,9 +77,14 @@ impl AccountStore for InMemoryAccountStore {
         Ok(())
     }
 
-    fn remove_funds(&mut self, client: ClientId, _amount: Decimal) -> Result<()> {
-        let _account = self.get_account(client)?;
-        // TODO
+    fn remove_funds(&mut self, client: ClientId, amount: Decimal) -> Result<()> {
+        let account = self.get_account(client)?;
+        if amount > account.get_available() {
+            return Err(Error::msg(
+                format!("Insufficient funds available to withdraw '{}' for {:?}", amount, account)
+            ));
+        }
+        account.total -= amount;
         Ok(())
     }
 
@@ -115,6 +124,32 @@ mod test {
 
         let account = store.get_account(ClientId(2))?;
         assert_eq!(dec!(25), account.total);
+        assert_eq!(dec!(0), account.held);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_remove_funds() -> Result<()> {
+        let mut store = InMemoryAccountStore::new();
+        store.add_funds(ClientId(2), dec!(20))?;
+        store.remove_funds(ClientId(2), dec!(5))?;
+
+        let account = store.get_account(ClientId(2))?;
+        assert_eq!(dec!(15), account.total);
+        assert_eq!(dec!(0), account.held);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_remove_funds_when_insufficient_available() -> Result<()> {
+        let mut store = InMemoryAccountStore::new();
+        store.add_funds(ClientId(2), dec!(20))?;
+        assert_eq!(true, store.remove_funds(ClientId(2), dec!(100)).is_err());
+
+        let account = store.get_account(ClientId(2))?;
+        assert_eq!(dec!(20), account.total);
         assert_eq!(dec!(0), account.held);
 
         Ok(())

@@ -2,6 +2,7 @@ use std::io::Write;
 use std::process::Command;
 
 use assert_cmd::prelude::*;
+use itertools::Itertools;
 use predicates::prelude::*;
 
 use tempfile::NamedTempFile;
@@ -29,10 +30,14 @@ fn assert_stdout_eq(input: &str, expected: &'static str) {
     write!(file, "{}", input).unwrap();
 
     let mut cmd = Command::cargo_bin("rusty-bank").unwrap();
-    cmd.arg(file.path())
-        .assert()
-        .stdout(expected.replace(' ', ""))
-        .success();
+
+    let cmd = cmd.arg(file.path());
+    cmd.assert().success();
+
+    let buf = cmd.output().unwrap().stdout;
+    let expected = expected.replace(' ', "").split("\n").sorted().rev().join("\n");
+    let output = String::from_utf8_lossy(&buf).split("\n").sorted().rev().join("\n");
+    assert_eq!(expected, output);
 }
 
 #[test]
@@ -59,7 +64,6 @@ fn test_deposit_does_change_available_and_total() {
 }
 
 #[test]
-#[should_panic]
 fn test_deposit_and_withdrawal_does_change_available_and_total() {
     let input = "\
         type,      client, tx, amount\n\
@@ -76,7 +80,6 @@ fn test_deposit_and_withdrawal_does_change_available_and_total() {
 }
 
 #[test]
-#[should_panic]
 fn test_withdrawal_when_insufficient_funds_does_not_change_available_and_total() {
     let input = "\
         type,      client, tx, amount\n\
