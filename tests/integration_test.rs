@@ -183,7 +183,6 @@ fn test_dispute_when_transaction_does_not_match_client_id_does_not_change_availa
 }
 
 #[test]
-#[should_panic]
 fn test_resolve_when_dispute_does_change_available_and_held_funds() {
     let input = "\
         type,      client, tx, amount\n\
@@ -204,7 +203,6 @@ fn test_resolve_when_dispute_does_change_available_and_held_funds() {
 }
 
 #[test]
-#[should_panic]
 fn test_resolve_when_transaction_does_not_exist_does_not_change_available_and_held_funds() {
     let input = "\
         type,      client, tx, amount\n\
@@ -214,14 +212,12 @@ fn test_resolve_when_transaction_does_not_exist_does_not_change_available_and_he
     ";
     let expected = "\
         client, available, held, total, locked\n\
-             1,         0,    0,     0,  false\n\
              2,        20,    0,    20,  false\n\
     ";
     assert_stdout_eq(input, expected);
 }
 
 #[test]
-#[should_panic]
 fn test_resolve_when_transaction_does_not_match_client_id_does_not_change_available_and_held_funds()
 {
     let input = "\
@@ -233,13 +229,11 @@ fn test_resolve_when_transaction_does_not_match_client_id_does_not_change_availa
     let expected = "\
         client, available, held, total, locked\n\
              1,         0,   10,    10,  false\n\
-             2,         0,    0,     0,  false\n\
     ";
     assert_stdout_eq(input, expected);
 }
 
 #[test]
-#[should_panic]
 fn test_resolve_when_dispute_does_not_exist_does_not_change_available_and_held_funds() {
     let input = "\
         type,      client, tx, amount\n\
@@ -259,7 +253,6 @@ fn test_resolve_when_dispute_does_not_exist_does_not_change_available_and_held_f
 }
 
 #[test]
-#[should_panic]
 fn test_duplicate_dispute_before_resolve_is_ignored() {
     let input = "\
         type,      client, tx, amount\n\
@@ -277,7 +270,6 @@ fn test_duplicate_dispute_before_resolve_is_ignored() {
 }
 
 #[test]
-#[should_panic]
 fn test_duplicate_dispute_after_resolve_is_ignored() {
     let input = "\
         type,      client, tx, amount\n\

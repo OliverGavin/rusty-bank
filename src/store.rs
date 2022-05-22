@@ -36,11 +36,14 @@ pub trait AccountStore {
     /// Adds funds to a client's account.
     fn add_funds(&mut self, client: ClientId, amount: Decimal) -> Result<()>;
 
-    /// Removes funds to a client's account.
+    /// Removes funds from a client's account.
     fn remove_funds(&mut self, client: ClientId, amount: Decimal) -> Result<()>;
 
-    /// Holds funds to a client's account.
+    /// Holds funds from a client's account.
     fn hold_funds(&mut self, client: ClientId, amount: Decimal) -> Result<()>;
+
+    /// Release held funds to a client's account.
+    fn release_funds(&mut self, client: ClientId, amount: Decimal) -> Result<()>;
 
     /// Exports all accounts as an iterator, consuming the store.
     fn export(self) -> Box<dyn Iterator<Item = Account>>;
@@ -94,6 +97,12 @@ impl AccountStore for InMemoryAccountStore {
     fn hold_funds(&mut self, client: ClientId, amount: Decimal) -> Result<()> {
         let account = self.get_account(client)?;
         account.held += amount;
+        Ok(())
+    }
+
+    fn release_funds(&mut self, client: ClientId, amount: Decimal) -> Result<()> {
+        let account = self.get_account(client)?;
+        account.held -= amount;
         Ok(())
     }
 
@@ -168,6 +177,21 @@ mod test {
         assert_eq!(dec!(20), account.total);
         assert_eq!(dec!(25), account.held);
         assert_eq!(dec!(-5), account.get_available());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_release_funds() -> Result<()> {
+        let mut store = InMemoryAccountStore::new();
+        store.add_funds(ClientId(2), dec!(20))?;
+        store.hold_funds(ClientId(2), dec!(25))?;
+        store.release_funds(ClientId(2), dec!(25))?;
+
+        let account = store.get_account(ClientId(2))?;
+        assert_eq!(dec!(20), account.total);
+        assert_eq!(dec!(0), account.held);
+        assert_eq!(dec!(20), account.get_available());
 
         Ok(())
     }

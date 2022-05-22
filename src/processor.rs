@@ -147,9 +147,46 @@ impl<S: AccountStore> TransactionProcessor<S> {
         self.disputes.insert(dispute.tx, DisputeCase::new(dispute));
     }
 
-    fn process_resolve(&self, resolve: Resolve) {
-        log::debug!("Processing resolve for {:?}", resolve);
-        todo!()
+    fn process_resolve(&mut self, resolve: Resolve) {
+        log::debug!("Processing dispute resolution for {:?}", resolve);
+        let dispute = match self.disputes.get_mut(&resolve.tx) {
+            Some(dispute) => dispute,
+            None => {
+                log::info!(
+                    "Cannot process dispute resolution. No such dispute found for {:?}",
+                    resolve
+                );
+                return;
+            }
+        };
+
+        if let DisputeStatus::Closed = dispute.status {
+            log::info!(
+                "Cannot process dispute resolution for {:?}. Case has already been closed for {:?}",
+                resolve,
+                dispute
+            );
+            return;
+        }
+
+        if dispute.detail.client != resolve.client {
+            log::info!(
+                "Cannot process dispute resolution. Client ID does not match for {:?} and {:?}",
+                resolve,
+                dispute
+            );
+            return;
+        }
+
+        // If a dispute exists then a deposit must also
+        let amount = self.deposits.get(&resolve.tx).unwrap().amount;
+
+        if let Err(err) = self.store.release_funds(dispute.detail.client, amount) {
+            log::info!("Cannot process {:?}: {}", dispute, err);
+            return;
+        };
+
+        dispute.status = DisputeStatus::Closed;
     }
 
     fn process_chargeback(&self, chargeback: Chargeback) {
@@ -373,6 +410,152 @@ mod test {
             assert_that!(
                 captured_logs[2].body.to_owned(),
                 matches_regex("A case already exists")
+            );
+        });
+    }
+
+    #[test]
+    fn test_process_resolve_updates_store() {
+        let mut reader = MockTransactionReader::new();
+        reader.expect_read().returning(|| {
+            let transactions = vec![
+                TransactionRecord::new(
+                    TransactionType::Deposit,
+                    ClientId(1),
+                    TransactionId(1),
+                    Some(10.into()),
+                ),
+                TransactionRecord::new(
+                    TransactionType::Dispute,
+                    ClientId(1),
+                    TransactionId(1),
+                    None,
+                ),
+                TransactionRecord::new(
+                    TransactionType::Resolve,
+                    ClientId(1),
+                    TransactionId(1),
+                    None,
+                ),
+            ]
+            .into_iter()
+            .map(Ok);
+            Box::new(transactions)
+        });
+
+        let mut store = MockAccountStore::new();
+        store
+            .expect_add_funds()
+            .once()
+            .with(eq(ClientId(1)), eq(dec!(10)))
+            .returning(|_, _| Ok(()));
+        store
+            .expect_hold_funds()
+            .once()
+            .with(eq(ClientId(1)), eq(dec!(10)))
+            .returning(|_, _| Ok(()));
+        store
+            .expect_release_funds()
+            .once()
+            .with(eq(ClientId(1)), eq(dec!(10)))
+            .returning(|_, _| Ok(()));
+
+        let mut processor = TransactionProcessor::new(store);
+        processor.process(reader);
+    }
+
+    #[test]
+    fn test_process_resolve_when_invalid_transaction_does_not_update_store() {
+        testing_logger::setup();
+
+        let mut reader = MockTransactionReader::new();
+        reader.expect_read().returning(|| {
+            let transactions = vec![
+                // Err: No such dispute found
+                TransactionRecord::new(
+                    TransactionType::Resolve,
+                    ClientId(1),
+                    TransactionId(1),
+                    None,
+                ),
+                // Ok
+                TransactionRecord::new(
+                    TransactionType::Deposit,
+                    ClientId(1),
+                    TransactionId(1),
+                    Some(dec!(50)),
+                ),
+                // Ok
+                TransactionRecord::new(
+                    TransactionType::Dispute,
+                    ClientId(1),
+                    TransactionId(1),
+                    None,
+                ),
+                // Err: Client ID does not match
+                TransactionRecord::new(
+                    TransactionType::Dispute,
+                    ClientId(5),
+                    TransactionId(1),
+                    None,
+                ),
+                // Ok
+                TransactionRecord::new(
+                    TransactionType::Resolve,
+                    ClientId(1),
+                    TransactionId(1),
+                    None,
+                ),
+                // Err: Case has already been closed
+                TransactionRecord::new(
+                    TransactionType::Resolve,
+                    ClientId(1),
+                    TransactionId(1),
+                    None,
+                ),
+            ]
+            .into_iter()
+            .map(Ok);
+            Box::new(transactions)
+        });
+
+        let mut store = MockAccountStore::new();
+        store
+            .expect_add_funds()
+            .once()
+            .with(eq(ClientId(1)), eq(dec!(50)))
+            .returning(|_, _| Ok(()));
+        store
+            .expect_hold_funds()
+            .once()
+            .with(eq(ClientId(1)), eq(dec!(50)))
+            .returning(|_, _| Ok(()));
+        store
+            .expect_release_funds()
+            .once()
+            .with(eq(ClientId(1)), eq(dec!(50)))
+            .returning(|_, _| Ok(()));
+
+        let mut processor = TransactionProcessor::new(store);
+        processor.process(reader);
+
+        testing_logger::validate(|captured_logs| {
+            let captured_logs = captured_logs
+                .iter()
+                .filter(|log| log.level <= Level::Info)
+                .collect_vec();
+            assert_eq!(captured_logs.len(), 3);
+            assert_that!(
+                captured_logs[0].body.to_owned(),
+                matches_regex("No such dispute found")
+            );
+            assert_that!(
+                captured_logs[1].body.to_owned(),
+                matches_regex("Client ID does not match")
+            );
+            assert_that!(
+                captured_logs[2].body.to_owned(),
+                matches_regex("Case has already been closed")
             );
         });
     }
