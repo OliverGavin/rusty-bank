@@ -10,6 +10,6 @@ mod transaction_record;
 mod writer;
 
 pub use {
-    account_summary::*, client::ClientId, config::Config, processor::*,
-    reader::*, store::*, transaction::*, transaction_record::*, writer::*,
+    account_summary::*, client::ClientId, config::Config, processor::*, reader::*, store::*,
+    transaction::*, transaction_record::*, writer::*,
 };

@@ -1,7 +1,8 @@
 use anyhow::Result;
 
 use crate::{
-    TransactionReader, AccountStore, AccountWriter, Transaction, Deposit, Withdrawal, Dispute, Resolve, Chargeback,
+    AccountStore, AccountWriter, Chargeback, Deposit, Dispute, Resolve, Transaction,
+    TransactionReader, Withdrawal,
 };
 
 /// A transaction processor which implements the key operations on client accounts.
@@ -14,7 +15,7 @@ use crate::{
 /// - [`<S: AccountStore>`](AccountStore): The data store type.
 ///
 pub struct TransactionProcessor<S: AccountStore> {
-    store: S
+    store: S,
 }
 
 impl<S: AccountStore> TransactionProcessor<S> {
@@ -24,9 +25,7 @@ impl<S: AccountStore> TransactionProcessor<S> {
     /// - store: The data store implementation.
     ///
     pub fn new(store: S) -> Self {
-        TransactionProcessor {
-            store
-        }
+        TransactionProcessor { store }
     }
 
     /// Process transactions.
@@ -38,11 +37,9 @@ impl<S: AccountStore> TransactionProcessor<S> {
     pub fn process(&mut self, mut reader: impl TransactionReader) {
         for result in reader.read() {
             match result {
-                Ok(record) => {
-                    match record.into() {
-                        Ok(tx) => self.process_transaction(tx),
-                        Err(err) => log::error!("Malformed transaction: {}", err),
-                    }
+                Ok(record) => match record.into() {
+                    Ok(tx) => self.process_transaction(tx),
+                    Err(err) => log::error!("Malformed transaction: {}", err),
                 },
                 Err(err) => log::error!("Could not read transaction record: {}", err),
             }
@@ -68,7 +65,10 @@ impl<S: AccountStore> TransactionProcessor<S> {
 
     fn process_withdrawal(&mut self, withdrawal: Withdrawal) {
         log::debug!("Processing withdrawal for {:?}", withdrawal);
-        if let Err(err) = self.store.remove_funds(withdrawal.client, withdrawal.amount) {
+        if let Err(err) = self
+            .store
+            .remove_funds(withdrawal.client, withdrawal.amount)
+        {
             log::info!("Cannot process withdrawal: {}", err)
         };
     }
@@ -115,11 +115,11 @@ mod test {
     use mockall_double::double;
     use rust_decimal_macros::dec;
 
-    use crate::TransactionRecord;
-    use crate::TransactionType;
     use crate::Account;
     use crate::ClientId;
     use crate::TransactionId;
+    use crate::TransactionRecord;
+    use crate::TransactionType;
 
     #[double]
     use crate::AccountStore as MockAccountStore;
@@ -132,24 +132,22 @@ mod test {
     fn test_process_deposit_updates_store() {
         let mut reader = MockTransactionReader::new();
         reader.expect_read().returning(|| {
-            let transactions = vec![
-                Ok(
-                    TransactionRecord::new(
-                        TransactionType::Deposit,
-                        ClientId(1),
-                        TransactionId(1),
-                        Some(10.into())
-                    )
-                ),
-            ].into_iter();
+            let transactions = vec![Ok(TransactionRecord::new(
+                TransactionType::Deposit,
+                ClientId(1),
+                TransactionId(1),
+                Some(10.into()),
+            ))]
+            .into_iter();
             Box::new(transactions)
         });
 
         let mut store = MockAccountStore::new();
-        store.expect_add_funds()
-             .times(1)
-             .with(eq(ClientId(1)), eq(dec!(10)))
-             .returning(|_, _| Ok(()));
+        store
+            .expect_add_funds()
+            .times(1)
+            .with(eq(ClientId(1)), eq(dec!(10)))
+            .returning(|_, _| Ok(()));
 
         let mut processor = TransactionProcessor::new(store);
         processor.process(reader);
@@ -159,24 +157,22 @@ mod test {
     fn test_process_withdrawal_updates_store() {
         let mut reader = MockTransactionReader::new();
         reader.expect_read().returning(|| {
-            let transactions = vec![
-                Ok(
-                    TransactionRecord::new(
-                        TransactionType::Withdrawal,
-                        ClientId(1),
-                        TransactionId(2),
-                        Some(5.into())
-                    )
-                ),
-            ].into_iter();
+            let transactions = vec![Ok(TransactionRecord::new(
+                TransactionType::Withdrawal,
+                ClientId(1),
+                TransactionId(2),
+                Some(5.into()),
+            ))]
+            .into_iter();
             Box::new(transactions)
         });
 
         let mut store = MockAccountStore::new();
-        store.expect_remove_funds()
-             .times(1)
-             .with(eq(ClientId(1)), eq(dec!(5)))
-             .returning(|_, _| Ok(()));
+        store
+            .expect_remove_funds()
+            .times(1)
+            .with(eq(ClientId(1)), eq(dec!(5)))
+            .returning(|_, _| Ok(()));
 
         let mut processor = TransactionProcessor::new(store);
         processor.process(reader);
@@ -190,14 +186,13 @@ mod test {
                 Account::empty(ClientId(1)),
                 Account::empty(ClientId(2)),
                 Account::empty(ClientId(3)),
-            ].into_iter();
+            ]
+            .into_iter();
             Box::new(accounts)
         });
 
         let mut writer = MockAccountWriter::new();
-        writer.expect_write()
-              .times(3)
-              .returning(|_| Ok(()));
+        writer.expect_write().times(3).returning(|_| Ok(()));
 
         let processor = TransactionProcessor::new(store);
         processor.export(writer)

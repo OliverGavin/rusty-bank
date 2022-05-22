@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anyhow::{Result, Error};
+use anyhow::{Error, Result};
 use rust_decimal::Decimal;
 
 use crate::ClientId;
@@ -17,11 +17,11 @@ pub struct Account {
 impl Account {
     /// Create an empty account with a balance of zero
     pub fn empty(client: ClientId) -> Self {
-        Account{
+        Account {
             client,
             held: 0.into(),
             total: 0.into(),
-            locked: false
+            locked: false,
         }
     }
 
@@ -41,27 +41,29 @@ pub trait AccountStore {
 
     /// Holds funds to a client's account.
     fn hold_funds(&mut self, client: ClientId, amount: Decimal) -> Result<()>;
-    
+
     /// Exports all accounts as an iterator, consuming the store.
     fn export(self) -> Box<dyn Iterator<Item = Account>>;
 }
 
 /// An in-memory implementation of [`AccountStore`].
 pub struct InMemoryAccountStore {
-    accounts: HashMap<ClientId, Account>
+    accounts: HashMap<ClientId, Account>,
 }
 
 impl InMemoryAccountStore {
     /// Construct a new [`InMemoryAccountStore`].
     pub fn new() -> Self {
         InMemoryAccountStore {
-            accounts: HashMap::new()
+            accounts: HashMap::new(),
         }
     }
 
     fn get_account(&mut self, client: ClientId) -> Result<&mut Account> {
         // self.accounts.mut
-        let account = self.accounts.entry(client)
+        let account = self
+            .accounts
+            .entry(client)
             .or_insert_with(|| Account::empty(client));
         match account.locked {
             true => Err(Error::msg(format!("Account is locked: {:?}", account))),
@@ -80,9 +82,10 @@ impl AccountStore for InMemoryAccountStore {
     fn remove_funds(&mut self, client: ClientId, amount: Decimal) -> Result<()> {
         let account = self.get_account(client)?;
         if amount > account.get_available() {
-            return Err(Error::msg(
-                format!("Insufficient funds available to withdraw '{}' for {:?}", amount, account)
-            ));
+            return Err(Error::msg(format!(
+                "Insufficient funds available to withdraw '{}' for {:?}",
+                amount, account
+            )));
         }
         account.total -= amount;
         Ok(())

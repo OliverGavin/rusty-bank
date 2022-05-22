@@ -1,6 +1,6 @@
 //! Serdes for transactions
 
-use anyhow::{Result, Context, Error};
+use anyhow::{Context, Error, Result};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
@@ -26,14 +26,14 @@ pub enum Transaction {
 pub struct Deposit {
     pub client: ClientId,
     pub tx: TransactionId,
-    pub amount: Decimal
+    pub amount: Decimal,
 }
 
 #[derive(Debug)]
 pub struct Withdrawal {
     pub client: ClientId,
     pub tx: TransactionId,
-    pub amount: Decimal
+    pub amount: Decimal,
 }
 
 #[derive(Debug)]
@@ -63,65 +63,55 @@ impl From<TransactionRecord> for Result<Transaction> {
     /// Converts a [`TransactionRecord`] to a [`Result<Transaction>`].
     /// An error is returned if validation fails or if expected fields are missing.
     fn from(record: TransactionRecord) -> Self {
-
         // validate the record fields
         if let Some(amount) = record.amount {
             // dispute, resolve and chargeback transactions should not have an amount
-            if let TransactionType::Dispute | TransactionType::Resolve | TransactionType::Chargeback = record.transaction_type {
-                return Err(Error::msg(format!("Unexpected amount field in {:?}", &record)));
+            if let TransactionType::Dispute
+            | TransactionType::Resolve
+            | TransactionType::Chargeback = record.transaction_type
+            {
+                return Err(Error::msg(format!(
+                    "Unexpected amount field in {:?}",
+                    &record
+                )));
             }
             // amount must be a positive non-zero number
             if amount <= 0.into() {
-                return Err(Error::msg(format!("Expected positive amount for {:?}", &record)));
+                return Err(Error::msg(format!(
+                    "Expected positive amount for {:?}",
+                    &record
+                )));
             }
         }
 
         // attempt to convert records to transactions
         match record.transaction_type {
-            TransactionType::Deposit => {
-                Ok(Transaction::Deposit(
-                    Deposit {
-                        client: record.client,
-                        tx: record.tx,
-                        amount: record.amount
-                                      .with_context(|| format!("Expected amount for {:?}", &record))?
-                    }
-                ))
-            },
-            TransactionType::Withdrawal => {
-                Ok(Transaction::Withdrawal(
-                    Withdrawal {
-                        client: record.client,
-                        tx: record.tx,
-                        amount: record.amount
-                                      .with_context(|| format!("Expected amount for {:?}", &record))?
-                    }
-                ))
-            },
-            TransactionType::Dispute => {
-                Ok(Transaction::Dispute(
-                    Dispute {
-                        client: record.client,
-                        tx: record.tx
-                    }
-                ))
-            },
-            TransactionType::Resolve => {
-                Ok(Transaction::Resolve(
-                    Resolve {
-                        client: record.client,
-                        tx: record.tx
-                    }
-                ))
-            },
-            TransactionType::Chargeback => {
-                Ok(Transaction::Chargeback(
-                    Chargeback {
-                        client: record.client,
-                        tx: record.tx
-                    }
-                ))
-            },
+            TransactionType::Deposit => Ok(Transaction::Deposit(Deposit {
+                client: record.client,
+                tx: record.tx,
+                amount: record
+                    .amount
+                    .with_context(|| format!("Expected amount for {:?}", &record))?,
+            })),
+            TransactionType::Withdrawal => Ok(Transaction::Withdrawal(Withdrawal {
+                client: record.client,
+                tx: record.tx,
+                amount: record
+                    .amount
+                    .with_context(|| format!("Expected amount for {:?}", &record))?,
+            })),
+            TransactionType::Dispute => Ok(Transaction::Dispute(Dispute {
+                client: record.client,
+                tx: record.tx,
+            })),
+            TransactionType::Resolve => Ok(Transaction::Resolve(Resolve {
+                client: record.client,
+                tx: record.tx,
+            })),
+            TransactionType::Chargeback => Ok(Transaction::Chargeback(Chargeback {
+                client: record.client,
+                tx: record.tx,
+            })),
         }
     }
 }
@@ -143,7 +133,7 @@ mod tests {
         transaction_type: TransactionType,
         client: ClientId,
         tx: TransactionId,
-        amount: Option<Decimal>
+        amount: Option<Decimal>,
     ) {
         let record = TransactionRecord::new(transaction_type, client, tx, amount);
         let result: Result<Transaction> = record.into();
@@ -162,7 +152,7 @@ mod tests {
         transaction_type: TransactionType,
         client: ClientId,
         tx: TransactionId,
-        amount: Option<Decimal>
+        amount: Option<Decimal>,
     ) {
         let record = TransactionRecord::new(transaction_type, client, tx, amount);
         let result: Result<Transaction> = record.into();

@@ -13,13 +13,15 @@ pub trait AccountWriter {
 /// Account writer for CSV files
 //  anyhow::Error requires Send + Sync + 'static
 pub struct CsvAccountWriter<W>
-    where W: std::io::Write + Send + Sync + 'static
+where
+    W: std::io::Write + Send + Sync + 'static,
 {
     writer: Option<Writer<W>>,
 }
 
 impl<W> CsvAccountWriter<W>
-    where W: std::io::Write + Send + Sync + 'static
+where
+    W: std::io::Write + Send + Sync + 'static,
 {
     /// Returns an account CSV writer that writes data to wtr.
     pub fn from_writer(wtr: W) -> Self {
@@ -40,7 +42,8 @@ impl<W> CsvAccountWriter<W>
 }
 
 impl<W> AccountWriter for CsvAccountWriter<W>
-    where W: std::io::Write + Send + Sync + 'static
+where
+    W: std::io::Write + Send + Sync + 'static,
 {
     /// Serializes and writes an account
     fn write(&mut self, account: &AccountSummary) -> Result<()> {

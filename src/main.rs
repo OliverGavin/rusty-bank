@@ -3,7 +3,9 @@ extern crate rusty_bank;
 use std::env;
 
 use anyhow::Result;
-use rusty_bank::{Config, CsvAccountWriter, CsvTransactionReader, TransactionProcessor, InMemoryAccountStore};
+use rusty_bank::{
+    Config, CsvAccountWriter, CsvTransactionReader, InMemoryAccountStore, TransactionProcessor,
+};
 
 fn main() -> Result<()> {
     env_logger::init();

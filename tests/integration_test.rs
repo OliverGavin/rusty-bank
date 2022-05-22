@@ -35,8 +35,17 @@ fn assert_stdout_eq(input: &str, expected: &'static str) {
     cmd.assert().success();
 
     let buf = cmd.output().unwrap().stdout;
-    let expected = expected.replace(' ', "").split("\n").sorted().rev().join("\n");
-    let output = String::from_utf8_lossy(&buf).split("\n").sorted().rev().join("\n");
+    let expected = expected
+        .replace(' ', "")
+        .split("\n")
+        .sorted()
+        .rev()
+        .join("\n");
+    let output = String::from_utf8_lossy(&buf)
+        .split("\n")
+        .sorted()
+        .rev()
+        .join("\n");
     assert_eq!(expected, output);
 }
 

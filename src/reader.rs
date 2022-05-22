@@ -32,7 +32,7 @@ impl TransactionReader for CsvTransactionReader {
         Box::new(
             self.reader
                 .deserialize()
-                .map(|result| result.map_err(Error::from))
+                .map(|result| result.map_err(Error::from)),
         )
     }
 }

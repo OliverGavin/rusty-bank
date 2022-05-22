@@ -120,11 +120,11 @@ mod tests {
 
     #[test]
     fn test_from() {
-        let account = Account{
+        let account = Account {
             client: ClientId(5),
             held: 5.into(),
             total: 20.into(),
-            locked: false
+            locked: false,
         };
         assert_eq!(
             AccountSummary {
